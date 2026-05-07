@@ -30,9 +30,7 @@ Keypad teclado = Keypad(makeKeymap(teclas), pinFilas, pinColumnas, FILAS, COLUMN
 
 // Estados del sistema
 EstadoDesarmado estadoDesarmado;
-// EstadoArmado estadoArmado;
-// EstadoActivado estadoActivado;
-// Cronometro cronometro;
+Armado estadoArmado;
 
 // ===================== Variables Globales =====================
 
@@ -103,45 +101,64 @@ void setup() {
 // ===================== Loop Principal =====================
 
 void loop() {
-  // Leer tecla del teclado matricial
+  // 1. Lectura de hardware crítica (No bloqueante y sin delays)
   char teclaPresionada = teclado.getKey();
-  
-  // Procesar la tecla en el estado actual
-  if (teclaPresionada) {
-    Serial.print("Tecla presionada: ");
-    Serial.println(teclaPresionada);
-    
-    if (estadoActual == ESTADO_DESARMADO) {
-      estadoDesarmado.procesarTecla(teclaPresionada);
-      
-      // Obtener parámetros configurados
-      tiempoCronometro = estadoDesarmado.obtenerTiempoCronometro();
-      tiempoAlarma = estadoDesarmado.obtenerTiempoAlarma();
-    }
+  bool botonPanicoPresionado = (digitalRead(BUTTON_1) == LOW); // Asumiendo lógica pull-up
+
+  // 2. Interrupción manual por Botón de Pánico
+  if (botonPanicoPresionado) {
+      Serial.println("¡PÁNICO ACTIVADO!");
+      estadoActual = ESTADO_ARMADO; // Forzar el cambio de estado si estaba desarmado
+      estadoArmado.triggerPanico(); // Llama a tu método
   }
-  
-  // Actualizar estado actual
-  if (estadoActual == ESTADO_DESARMADO) {
-    estadoDesarmado.update();
-    
-    // Verificar si debe transicionar a armado
-    if (estadoDesarmado.debeTransicionarArmado()) {
-      Serial.println("=== TRANSICIÓN A ESTADO ARMADO ===");
-      estadoDesarmado.exit();
-      estadoActual = ESTADO_ARMADO;
-      // estadoArmado.enter();
+
+  // 3. Máquina de Estados (Patrón State)
+  switch (estadoActual) {
       
-      // Mostrar parámetros configurados
-      Serial.print("Parámetros configurados - Cronometro: ");
-      Serial.print(tiempoCronometro);
-      Serial.print("s, Alarma: ");
-      Serial.print(tiempoAlarma);
-      Serial.println("s");
-    }
+    case ESTADO_DESARMADO:
+      if (teclaPresionada) {
+        estadoDesarmado.procesarTecla(teclaPresionada);
+      }
+      estadoDesarmado.update();
+      
+      if (estadoDesarmado.debeTransicionarArmado()) {
+        Serial.println("=== TRANSICIÓN A ESTADO ARMADO ===");
+        estadoDesarmado.exit();
+        estadoActual = ESTADO_ARMADO;
+        estadoArmado.activarArmado(); // Llama a la inicialización de tu clase
+      }
+      break;
+
+    case ESTADO_ARMADO:
+      // Aquí el motor de tu clase respira y evalúa sensores/tiempos
+      estadoArmado.update();
+
+      // Validación para PODER DESARMAR
+      if (teclaPresionada) {
+        Serial.print("Tecla en estado armado: ");
+        Serial.println(teclaPresionada);
+        
+        // AQUÍ tu equipo DEBE implementar la lógica que recibe la clave.
+        // Asumiendo que tienen una función 'validarPinDesarmado(char tecla)'
+        // bool pinCorrecto = validarPinDesarmado(teclaPresionada);
+        
+        // Si el pin es correcto:
+        /*
+        if (pinCorrecto) {
+            estadoArmado.desactivarArmado(); // Tu método limpia los LEDs y el Buzzer
+            estadoActual = ESTADO_DESARMADO;
+            // estadoDesarmado.enter();
+        }
+        */
+      }
+      break;
+
+    case ESTADO_ALARMA:
+      // Si deciden usar este estado aparte de ARMADO, tu clase debe controlarlo,
+      // pero en nuestra arquitectura, ESTADO_ARMADO ya maneja la alarma disparada.
+      // Evalúen si realmente necesitan 3 estados o si con 2 (Desarmado / Armado-Vigilando) basta.
+      break;
   }
-  // Aquí irán las lógicas de ESTADO_ARMADO y ESTADO_ALARMA cuando se implementen
-  
-  delay(50); // Pequeño delay para evitar saturar el procesador
 }
 
 // ===================== Funciones de Utilidad =====================
