@@ -3,7 +3,6 @@
 #include <SevSeg.h>
 #include <SPI.h>
 #include <MFRC522.h>
-
 #include "pins.h"
 #include "EstadoDesarmado.h"
 #include "armado.h"
