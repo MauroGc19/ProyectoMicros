@@ -5,10 +5,9 @@
 #include <MFRC522.h>
 
 #include "pins.h"
-#include "desarmado.h"
+#include "EstadoDesarmado.h"
 #include "armado.h"
-#include "activado.h"
-#include "cronometro.h"
+
 
 // ===================== Instancias Globales =====================
 
@@ -120,6 +119,13 @@ void loop() {
       tiempoAlarma = estadoDesarmado.obtenerTiempoAlarma();
     }
   }
+  // Depuración: mostrar lecturas crudas y mapeadas de potenciómetros
+  int raw_pot1 = analogRead(POT_1);
+  int raw_pot2 = analogRead(POT_2);
+  int mapped1 = map(raw_pot1, 0, 1023, 0, 30);
+  int mapped2 = map(raw_pot2, 0, 1023, 5, 30);
+  Serial.print("RAW POT1:"); Serial.print(raw_pot1); Serial.print(" M1:"); Serial.print(mapped1);
+  Serial.print(" | RAW POT2:"); Serial.print(raw_pot2); Serial.print(" M2:"); Serial.println(mapped2);
   
   // Actualizar estado actual
   if (estadoActual == ESTADO_DESARMADO) {
