@@ -7,13 +7,9 @@
 #include "EstadoDesarmado.h"
 #include "armado.h"
 
-
 // ===================== Instancias Globales =====================
-
-// LCD 16x2 - Inicialización con pines RS, EN, D0-D7
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D0, LCD_D1, LCD_D2, LCD_D3, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
-// Teclado Matricial 4x4
 const byte FILAS = 4;
 const byte COLUMNAS = 4;
 char teclas[FILAS][COLUMNAS] = {
@@ -27,41 +23,28 @@ byte pinFilas[FILAS] = {KEYPAD_ROW_1, KEYPAD_ROW_2, KEYPAD_ROW_3, KEYPAD_ROW_4};
 byte pinColumnas[COLUMNAS] = {KEYPAD_COL_1, KEYPAD_COL_2, KEYPAD_COL_3, KEYPAD_COL_4};
 Keypad teclado = Keypad(makeKeymap(teclas), pinFilas, pinColumnas, FILAS, COLUMNAS);
 
-// Estados del sistema
 EstadoDesarmado estadoDesarmado;
-// EstadoArmado estadoArmado;
-// EstadoActivado estadoActivado;
-// Cronometro cronometro;
+Armado estadoArmado;
 
 // ===================== Variables Globales =====================
-
-// Estados del sistema
 enum EstadoSistema {
   ESTADO_DESARMADO,
-  ESTADO_ARMADO,
-  ESTADO_ALARMA
+  ESTADO_ARMADO
 };
 
 EstadoSistema estadoActual = ESTADO_DESARMADO;
-EstadoSistema estadoAnterior = ESTADO_DESARMADO;
-
-// Parámetros del sistema (se configuran en DESARMADO)
 unsigned int tiempoCronometro = 30;
 unsigned int tiempoAlarma = 30;
 
 // ===================== Setup =====================
-
 void setup() {
-  // Inicializar comunicación serial para debugging
   Serial.begin(9600);
   Serial.println("=== SISTEMA DE ALARMA INICIANDO ===");
   
-  // Inicializar LCD (16 columnas, 2 filas)
   lcd.begin(16, 2);
   lcd.clear();
   lcd.print("Sistema Iniciando");
   
-  // Configurar pines de entrada
   pinMode(POT_1, INPUT);
   pinMode(POT_2, INPUT);
   pinMode(SWITCH_1, INPUT);
@@ -73,7 +56,6 @@ void setup() {
   pinMode(BUTTON_1, INPUT_PULLUP);
   pinMode(BUTTON_2, INPUT_PULLUP);
   
-  // Configurar pines de salida
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW);
   
@@ -84,85 +66,69 @@ void setup() {
   pinMode(DATA_BIT_2, OUTPUT);
   pinMode(DATA_BIT_3, OUTPUT);
   
-  // Configurar LEDs
   for (int i = 0; i < 8; i++) {
-    int pinLED = 2 + i; // Pines 2-9
+    int pinLED = 2 + i; 
     pinMode(pinLED, OUTPUT);
     digitalWrite(pinLED, LOW);
   }
   
-  // Inicializar el estado desarmado
   estadoActual = ESTADO_DESARMADO;
-  estadoDesarmado.enter();
+  // estadoDesarmado.enter(); // Descomentar cuando la clase EstadoDesarmado esté lista
   
-  Serial.println("Sistema inicializado correctamente");
-  delay(1000);
+  Serial.println("Sistema inicializado");
 }
 
 // ===================== Loop Principal =====================
-
 void loop() {
-  // Leer tecla del teclado matricial
   char teclaPresionada = teclado.getKey();
-  
-  // Procesar la tecla en el estado actual
-  if (teclaPresionada) {
-    Serial.print("Tecla presionada: ");
-    Serial.println(teclaPresionada);
-    
-    if (estadoActual == ESTADO_DESARMADO) {
-      estadoDesarmado.procesarTecla(teclaPresionada);
-      
-      // Obtener parámetros configurados
-      tiempoCronometro = estadoDesarmado.obtenerTiempoCronometro();
-      tiempoAlarma = estadoDesarmado.obtenerTiempoAlarma();
-    }
-  }
-  // Depuración: mostrar lecturas crudas y mapeadas de potenciómetros
-  int raw_pot1 = analogRead(POT_1);
-  int raw_pot2 = analogRead(POT_2);
-  int mapped1 = map(raw_pot1, 0, 1023, 0, 30);
-  int mapped2 = map(raw_pot2, 0, 1023, 5, 30);
-  Serial.print("RAW POT1:"); Serial.print(raw_pot1); Serial.print(" M1:"); Serial.print(mapped1);
-  Serial.print(" | RAW POT2:"); Serial.print(raw_pot2); Serial.print(" M2:"); Serial.println(mapped2);
-  
-  // Actualizar estado actual
-  if (estadoActual == ESTADO_DESARMADO) {
-    estadoDesarmado.update();
-    
-    // Verificar si debe transicionar a armado
-    if (estadoDesarmado.debeTransicionarArmado()) {
-      Serial.println("=== TRANSICIÓN A ESTADO ARMADO ===");
-      estadoDesarmado.exit();
-      estadoActual = ESTADO_ARMADO;
-      // estadoArmado.enter();
-      
-      // Mostrar parámetros configurados
-      Serial.print("Parámetros configurados - Cronometro: ");
-      Serial.print(tiempoCronometro);
-      Serial.print("s, Alarma: ");
-      Serial.print(tiempoAlarma);
-      Serial.println("s");
-    }
-  }
-  // Aquí irán las lógicas de ESTADO_ARMADO y ESTADO_ALARMA cuando se implementen
-  
-  delay(50); // Pequeño delay para evitar saturar el procesador
-}
+  bool botonPanicoPresionado = (digitalRead(BUTTON_1) == LOW); 
 
-// ===================== Funciones de Utilidad =====================
+  // Pánico: Ignora estados y dispara. Solo se activa si la alarma no está ya disparada.
+  if (botonPanicoPresionado && !estadoArmado.isAlarmaDisparada()) {
+      Serial.println("¡PÁNICO ACTIVADO!");
+      estadoActual = ESTADO_ARMADO; 
+      estadoArmado.triggerPanico(); 
+  }
 
-void mostrarValoresPotenciometros() {
-  int pot1 = analogRead(POT_1);
-  int pot2 = analogRead(POT_2);
-  
-  Serial.print("POT1: ");
-  Serial.print(pot1);
-  Serial.print(" -> ");
-  Serial.print(tiempoCronometro);
-  Serial.print("s | POT2: ");
-  Serial.print(pot2);
-  Serial.print(" -> ");
-  Serial.print(tiempoAlarma);
-  Serial.println("s");
+  // Máquina de Estados
+  switch (estadoActual) {
+      
+    case ESTADO_DESARMADO:
+      if (teclaPresionada) {
+        // Delega la tecla a la clase Desarmado
+        estadoDesarmado.procesarTecla(teclaPresionada);
+      }
+      estadoDesarmado.update();
+      
+      if (estadoDesarmado.debeTransicionarArmado()) {
+        Serial.println("=== TRANSICIÓN A ESTADO ARMADO ===");
+        // estadoDesarmado.exit(); // Descomentar cuando exista
+        estadoActual = ESTADO_ARMADO;
+        estadoArmado.activarArmado(); 
+      }
+      break;
+
+    case ESTADO_ARMADO:
+      // El motor de vigilancia de sensores
+      estadoArmado.update();
+
+      // Transición para volver a DESARMADO (Tu equipo debe inyectar su validación aquí)
+      if (teclaPresionada) {
+        // NOTA PARA TU EQUIPO: Reemplacen esta lógica falsa con la validación de PIN real
+        bool pinCorrecto = false; 
+        
+        // Simulación: Si presionan '#' asumimos que el PIN fue validado
+        if (teclaPresionada == '#') {
+            pinCorrecto = true;
+        }
+
+        if (pinCorrecto) {
+            Serial.println("PIN CORRECTO. DESARMANDO SISTEMA...");
+            estadoArmado.desactivarArmado(); 
+            estadoActual = ESTADO_DESARMADO;
+            // estadoDesarmado.enter(); // Descomentar para reiniciar el LCD
+        }
+      }
+      break;
+  }
 }
