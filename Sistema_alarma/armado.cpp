@@ -1,7 +1,7 @@
 #include "armado.h"
 
-const unsigned long TIEMPO_ESPERA_ESP = 30000; 
-const unsigned long INTERVALO_PARPADEO = 150;  
+const unsigned long TIEMPO_ESPERA_ESP = 30000; // 30 segundos inamovibles para red
+const unsigned long INTERVALO_PARPADEO = 150;  // Parpadeo rápido en milisegundos
 
 Armado::Armado() {
     sistemaArmado = false;
@@ -23,7 +23,8 @@ void Armado::activarArmado() {
     sirenaActiva = false;
     zonaViolada = 0;
     
-    digitalWrite(PIN_LED_ARMED, HIGH); 
+    // LED2: Armed status (steady when armed) 
+    digitalWrite(LED_2, HIGH); 
 }
 
 void Armado::desactivarArmado() {
@@ -32,13 +33,14 @@ void Armado::desactivarArmado() {
     alarmaFisicaActiva = false;
     sirenaActiva = false;
     
-    digitalWrite(PIN_LED_ARMED, LOW);
-    digitalWrite(PIN_BUZZER, LOW); 
+    digitalWrite(LED_2, LOW);
+    digitalWrite(RELAY_PIN, LOW); // Relé: Main alarm output - activates siren/strobe light 
     
-    digitalWrite(PIN_LED_ZONA1, LOW);
-    digitalWrite(PIN_LED_ZONA2, LOW);
-    digitalWrite(PIN_LED_ZONA3, LOW);
-    digitalWrite(PIN_LED_ZONA4, LOW);
+    // Apagar LEDs de zona (LED3-6: Zone status) 
+    digitalWrite(LED_3, LOW);
+    digitalWrite(LED_4, LOW);
+    digitalWrite(LED_5, LOW);
+    digitalWrite(LED_6, LOW);
 }
 
 void Armado::update() {
@@ -52,7 +54,8 @@ void Armado::update() {
 }
 
 void Armado::monitorearZonas() {
-    uint8_t pinesZonas[4] = {PIN_ZONA1, PIN_ZONA2, PIN_ZONA3, PIN_ZONA4};
+    // Switch 1-4: Intrusion sensor zones [cite: 42]
+    uint8_t pinesZonas[4] = {SWITCH_1, SWITCH_2, SWITCH_3, SWITCH_4};
     
     for (int i = 0; i < 4; i++) {
         if (digitalRead(pinesZonas[i]) == HIGH) { 
@@ -61,8 +64,9 @@ void Armado::monitorearZonas() {
             alarmaFisicaActiva = true;
             tiempoDisparo = millis();
             
-            if (digitalRead(PIN_DIP_SILENCIOSA) == LOW) { 
-                digitalWrite(PIN_BUZZER, HIGH);
+            // Switch 6: Silent alarm (no siren) vs. audible [cite: 43]
+            if (digitalRead(SWITCH_6) == LOW) { // Asumiendo LOW = Audible
+                digitalWrite(RELAY_PIN, HIGH);
                 sirenaActiva = true;
             }
             break; 
@@ -74,16 +78,19 @@ void Armado::gestionarTiempos() {
     unsigned long tiempoActual = millis();
     unsigned long tiempoTranscurrido = tiempoActual - tiempoDisparo;
 
+    // HILO 1: Red y Notificación (Independiente del Hardware)
     if (!advertenciaESPEnviada && tiempoTranscurrido >= TIEMPO_ESPERA_ESP) {
         comunicarESP32("ALERTA: INTRUSION NO ATENDIDA EN ZONA " + String(zonaViolada));
         advertenciaESPEnviada = true;
     }
 
+    // HILO 2: Actuadores Físicos y Control Local
     if (alarmaFisicaActiva) {
-        unsigned long duracionAlarma = map(analogRead(PIN_POT2), 0, 1023, 5000, 120000); 
+        // Port2: Adjust alarm duration/siren length [cite: 47]
+        unsigned long duracionAlarma = map(analogRead(POT_2), 0, 1023, 5000, 120000); 
         
         if (tiempoTranscurrido >= duracionAlarma) {
-            digitalWrite(PIN_BUZZER, LOW); 
+            digitalWrite(RELAY_PIN, LOW); 
             sirenaActiva = false;
             alarmaFisicaActiva = false; 
         } else {
@@ -98,25 +105,27 @@ void Armado::gestionarTiempos() {
 
 void Armado::parpadearLEDZona() {
     uint8_t pinLedActual;
+    // LED3-6: Zone status (show which zones are active/violated) 
     switch(zonaViolada) {
-        case 1: pinLedActual = PIN_LED_ZONA1; break;
-        case 2: pinLedActual = PIN_LED_ZONA2; break;
-        case 3: pinLedActual = PIN_LED_ZONA3; break;
-        case 4: pinLedActual = PIN_LED_ZONA4; break;
+        case 1: pinLedActual = LED_3; break;
+        case 2: pinLedActual = LED_4; break;
+        case 3: pinLedActual = LED_5; break;
+        case 4: pinLedActual = LED_6; break;
         default: return;
     }
     digitalWrite(pinLedActual, estadoParpadeoLED ? HIGH : LOW);
 }
 
 void Armado::triggerPanico() {
+    // Button1: Panic button (instant alarm) [cite: 49]
     if (!sistemaArmado) activarArmado(); 
     
-    zonaViolada = 99; 
+    zonaViolada = 99; // 99 indica Pánico en el sistema
     alarmaDisparada = true;
     alarmaFisicaActiva = true;
     tiempoDisparo = millis();
     
-    digitalWrite(PIN_BUZZER, HIGH); 
+    digitalWrite(RELAY_PIN, HIGH); // El pánico es estrictamente audible
     sirenaActiva = true;
     
     comunicarESP32("ALERTA CRITICA: BOTON DE PANICO ACCIONADO");
