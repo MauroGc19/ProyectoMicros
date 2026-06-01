@@ -15,12 +15,12 @@
 // RW está conectado a tierra (escritura solamente)
 
 // ==================== Displays de 7 Segmentos ====================
-#define DISPLAY_1_EN    32  // Enable Display 1
-#define DISPLAY_2_EN    33  // Enable Display 2
-#define DATA_BIT_0      34  // Bit 0 para dato binario
-#define DATA_BIT_1      35  // Bit 1 para dato binario
-#define DATA_BIT_2      36  // Bit 2 para dato binario
-#define DATA_BIT_3      37  // Bit 3 para dato binario
+#define DISPLAY_1_EN    2  // Enable Display 1
+#define DISPLAY_2_EN    3  // Enable Display 2
+#define DATA_BIT_0      4  // Bit 0 para dato binario
+#define DATA_BIT_1      5  // Bit 1 para dato binario
+#define DATA_BIT_2      6  // Bit 2 para dato binario
+#define DATA_BIT_3      7  // Bit 3 para dato binario
 
 // ==================== Teclado Matricial 4x4 ====================
 #define KEYPAD_ROW_1    38  // Fila 1
@@ -33,8 +33,8 @@
 #define KEYPAD_COL_4    45  // Columna 4
 
 // ==================== Botones ====================
-#define BUTTON_1        46  // Botón 1
-#define BUTTON_2        47  // Botón 2
+#define BUTTON_1        19 // Botón 1
+#define BUTTON_2        20  // Botón 2
 
 // ==================== Entradas Analógicas ====================
 #define POT_1           A0  // Potenciómetro 1
@@ -48,13 +48,13 @@
 #define RELAY_PIN       A8  // Relay
 
 // ==================== LEDs (Pines 2-9) ====================
-#define LED_1           2   // LED 1
-#define LED_2           3   // LED 2
-#define LED_3           4   // LED 3
-#define LED_4           5   // LED 4
-#define LED_5           6   // LED 5
-#define LED_6           7   // LED 6
-#define LED_7           8   // LED 7
-#define LED_8           9   // LED 8
+#define LED_1           46   // LED 1
+#define LED_2           47   // LED 2
+#define LED_3           48  // LED 3
+#define LED_4           49  // LED 4
+#define LED_5           50   // LED 5
+#define LED_6           51  // LED 6
+#define LED_7           52   // LED 7
+#define LED_8           53   // LED 8
 
 #endif // PINS_H

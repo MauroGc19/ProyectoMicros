@@ -5,7 +5,7 @@
 #include <MFRC522.h>
 #include "pins.h"
 #include "EstadoDesarmado.h"
-#include "armado.h"
+#include "EstadoArmado.h"
 
 
 // ===================== Instancias Globales =====================
@@ -29,25 +29,51 @@ Keypad teclado = Keypad(makeKeymap(teclas), pinFilas, pinColumnas, FILAS, COLUMN
 
 // Estados del sistema
 EstadoDesarmado estadoDesarmado;
-// EstadoArmado estadoArmado;
-// EstadoActivado estadoActivado;
-// Cronometro cronometro;
+EstadoArmado estadoArmado;
 
 // ===================== Variables Globales =====================
 
 // Estados del sistema
 enum EstadoSistema {
   ESTADO_DESARMADO,
-  ESTADO_ARMADO,
-  ESTADO_ALARMA
+  ESTADO_ARMADO
 };
 
 EstadoSistema estadoActual = ESTADO_DESARMADO;
 EstadoSistema estadoAnterior = ESTADO_DESARMADO;
 
+volatile bool boton1InterruptEvent = false;
+volatile bool led8Latched = false;
+
+void boton1ISR() {
+  boton1InterruptEvent = true;
+}
+
 // Parámetros del sistema (se configuran en DESARMADO)
 unsigned int tiempoCronometro = 30;
 unsigned int tiempoAlarma = 30;
+
+// Prototipo para función de cambio de estado usada por los estados
+extern void cambiarEstado(void* nuevoEstado);
+
+// Implementación central de cambio de estado
+void cambiarEstado(void* nuevoEstado) {
+  // nuevoEstado == nullptr -> transición a ARMADO (solicitada por EstadoDesarmado)
+  if (nuevoEstado == nullptr) {
+    estadoDesarmado.exit();
+    estadoActual = ESTADO_ARMADO;
+    estadoArmado.enter();
+    return;
+  }
+  // nuevoEstado == (void*)1 -> transición a DESARMADO (señal desde EstadoArmado)
+  if (nuevoEstado == (void*)1) {
+    estadoDesarmado.reiniciar();
+    estadoActual = ESTADO_DESARMADO;
+    estadoDesarmado.enter();
+    return;
+  }
+  // Otros valores ignorados por ahora
+}
 
 // ===================== Setup =====================
 
@@ -72,6 +98,7 @@ void setup() {
   pinMode(SWITCH_6, INPUT);
   pinMode(BUTTON_1, INPUT_PULLUP);
   pinMode(BUTTON_2, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_1), boton1ISR, FALLING);
   
   // Configurar pines de salida
   pinMode(RELAY_PIN, OUTPUT);
@@ -123,8 +150,7 @@ void loop() {
   int raw_pot2 = analogRead(POT_2);
   int mapped1 = map(raw_pot1, 0, 1023, 0, 30);
   int mapped2 = map(raw_pot2, 0, 1023, 5, 30);
-  Serial.print("RAW POT1:"); Serial.print(raw_pot1); Serial.print(" M1:"); Serial.print(mapped1);
-  Serial.print(" | RAW POT2:"); Serial.print(raw_pot2); Serial.print(" M2:"); Serial.println(mapped2);
+
   
   // Actualizar estado actual
   if (estadoActual == ESTADO_DESARMADO) {
@@ -133,10 +159,9 @@ void loop() {
     // Verificar si debe transicionar a armado
     if (estadoDesarmado.debeTransicionarArmado()) {
       Serial.println("=== TRANSICIÓN A ESTADO ARMADO ===");
-      estadoDesarmado.exit();
-      estadoActual = ESTADO_ARMADO;
-      // estadoArmado.enter();
-      
+      // Delegar la transición a la función central cambiarEstado
+      cambiarEstado(nullptr);
+
       // Mostrar parámetros configurados
       Serial.print("Parámetros configurados - Cronometro: ");
       Serial.print(tiempoCronometro);
@@ -145,9 +170,27 @@ void loop() {
       Serial.println("s");
     }
   }
-  // Aquí irán las lógicas de ESTADO_ARMADO y ESTADO_ALARMA cuando se implementen
-  
-  delay(50); // Pequeño delay para evitar saturar el procesador
+  else if (estadoActual == ESTADO_ARMADO) {
+    estadoArmado.update();
+  }
+
+  // Si BUTTON_1 se pulsó, alternar el latch de LED_8.
+  if (boton1InterruptEvent) {
+    led8Latched = !led8Latched;
+    boton1InterruptEvent = false;
+  }
+
+  // Lógica para LED_8 combinada:
+  // - SWITCH_6 activa LED_8 mientras esté presionado
+  // - BUTTON_1 alterna el estado de LED_8 hasta un nuevo pulso
+  // - EstadoArmado puede activar LED_8 temporalmente cuando la alarma vence
+  bool externalLed8 = digitalRead(SWITCH_6) == HIGH;
+  bool armadoLed8 = estadoArmado.isLed8Active();
+  if (externalLed8 || led8Latched || armadoLed8) digitalWrite(RELAY_PIN, HIGH);
+  else digitalWrite(RELAY_PIN, LOW);
+
+  // Aquí irán las lógicas de ESTADO_ARMADO cuando se implementen
+  // Pequeño delay para evitar saturar el procesador
 }
 
 // ===================== Funciones de Utilidad =====================
@@ -155,14 +198,4 @@ void loop() {
 void mostrarValoresPotenciometros() {
   int pot1 = analogRead(POT_1);
   int pot2 = analogRead(POT_2);
-  
-  Serial.print("POT1: ");
-  Serial.print(pot1);
-  Serial.print(" -> ");
-  Serial.print(tiempoCronometro);
-  Serial.print("s | POT2: ");
-  Serial.print(pot2);
-  Serial.print(" -> ");
-  Serial.print(tiempoAlarma);
-  Serial.println("s");
 }

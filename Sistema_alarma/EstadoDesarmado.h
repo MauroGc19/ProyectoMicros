@@ -49,10 +49,10 @@ public:
 
 private:
   // PIN de seguridad
-  const String PIN_CORRECTO = "1234";
+  const String PIN_CORRECTO = "1245";
   String pinIngresado;
   unsigned long ultimaTeclaMillis;
-  const unsigned long PIN_TIMEOUT_MS = 5000;
+  const unsigned long PIN_TIMEOUT_MS = 7000;
 
   // Potenciómetros mapeados 0-99
   uint8_t pot1Value; // tiempo armado / cuenta regresiva (0-99)
@@ -68,7 +68,7 @@ private:
   // Multiplexación displays
   uint8_t currentDigit; // 0 = decenas, 1 = unidades
   unsigned long lastMultiplexMillis;
-  const unsigned long MULTIPLEX_INTERVAL_US = 2000; // 2 ms por dígito
+  const unsigned long MULTIPLEX_INTERVAL_US = 1; // 5 ms por dígito
 
   // Mensajes LCD temporales
   String mensajeTemporal;
