@@ -22,6 +22,10 @@ bool EstadoArmado::isLed8Active() {
   return millis() < led8UntilMillis;
 }
 
+bool EstadoArmado::isSirenaActive() {
+  return sirenaActiva;
+}
+
 void EstadoArmado::begin() {
   // Configurar pines
   pinMode(DISPLAY_1_EN, OUTPUT);
@@ -150,39 +154,18 @@ void EstadoArmado::leerTeclado() {
       if (pinIngresado.length() < 6) pinIngresado += k; // permitir más intentos
       ultimaTeclaMillis = millis();
     } else if (k == '#') {
-      // Clear
+      // Clear input
       pinIngresado = "";
+      ultimaTeclaMillis = millis();
     } else if (k == '*') {
-      // Submit
+      // Submit PIN
       if (validarPIN()) {
-        // Si estamos en pre-alarma: cancelar y volver a EstadoDesarmado
-        if (preAlarmaActiva) {
-          // Mantener memoria de alarma y volver a EstadoDesarmado
-          alarmaMemoria = true;
-          digitalWrite(RELAY_PIN, LOW);
-          sirenaActiva = false;
-          // Apagar LEDs de zona
-          digitalWrite(LED_3, LOW);
-          digitalWrite(LED_4, LOW);
-          digitalWrite(LED_5, LOW);
-          digitalWrite(LED_6, LOW);
-          // Señalizar al sketch que debe volver a EstadoDesarmado
-          cambiarEstado((void*)1);
-          return;
-        } else {
-          // Si no hay pre-alarma: desarmar sistema (ir a EstadoDesarmado)
-          alarmaMemoria = true; // mantener memoria
-          digitalWrite(RELAY_PIN, LOW);
-          sirenaActiva = false;
-          digitalWrite(LED_3, LOW);
-          digitalWrite(LED_4, LOW);
-          digitalWrite(LED_5, LOW);
-          digitalWrite(LED_6, LOW);
-          cambiarEstado((void*)1);
-          return;
-        }
+        // Si la sirena está activa o hubo pre-alarma, apagar y desarmar
+        resetearSistema(false);
+        cambiarEstado((void*)1);
+        return;
       } else {
-        // PIN incorrecto (no bloqueante)
+        // PIN incorrecto
         mensajeIncorrecto = "PIN Incorrecto";
         mensajeIncorrectoUntilMillis = millis() + 1500;
         pinIngresado = "";

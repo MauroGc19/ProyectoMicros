@@ -43,10 +43,18 @@ EstadoSistema estadoActual = ESTADO_DESARMADO;
 EstadoSistema estadoAnterior = ESTADO_DESARMADO;
 
 volatile bool boton1InterruptEvent = false;
+volatile bool boton2InterruptEvent = false;
 volatile bool led8Latched = false;
 
 void boton1ISR() {
+  // Energiza el relay inmediatamente y marca evento
+  digitalWrite(RELAY_PIN, HIGH);
   boton1InterruptEvent = true;
+}
+
+void boton2ISR() {
+  // Solicita transición a estado DESARMADO
+  boton2InterruptEvent = true;
 }
 
 // Parámetros del sistema (se configuran en DESARMADO)
@@ -67,6 +75,9 @@ void cambiarEstado(void* nuevoEstado) {
   }
   // nuevoEstado == (void*)1 -> transición a DESARMADO (señal desde EstadoArmado)
   if (nuevoEstado == (void*)1) {
+    // Asegurar que el relay y latches se apaguen al desarmar
+    digitalWrite(RELAY_PIN, LOW);
+    led8Latched = false;
     estadoDesarmado.reiniciar();
     estadoActual = ESTADO_DESARMADO;
     estadoDesarmado.enter();
@@ -99,6 +110,7 @@ void setup() {
   pinMode(BUTTON_1, INPUT_PULLUP);
   pinMode(BUTTON_2, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(BUTTON_1), boton1ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_2), boton2ISR, FALLING);
   
   // Configurar pines de salida
   pinMode(RELAY_PIN, OUTPUT);
@@ -176,8 +188,15 @@ void loop() {
 
   // Si BUTTON_1 se pulsó, alternar el latch de LED_8.
   if (boton1InterruptEvent) {
+    // alternar latch para mantener RELAY_PIN encendido hasta nuevo pulso
     led8Latched = !led8Latched;
     boton1InterruptEvent = false;
+  }
+
+  // Si BUTTON_2 se pulsó, forzar transición a DESARMADO
+  if (boton2InterruptEvent) {
+    boton2InterruptEvent = false;
+    cambiarEstado((void*)1);
   }
 
   // Lógica para LED_8 combinada:
@@ -186,7 +205,8 @@ void loop() {
   // - EstadoArmado puede activar LED_8 temporalmente cuando la alarma vence
   bool externalLed8 = digitalRead(SWITCH_6) == HIGH;
   bool armadoLed8 = estadoArmado.isLed8Active();
-  if (externalLed8 || led8Latched || armadoLed8) digitalWrite(RELAY_PIN, HIGH);
+  bool sirenaActiva = estadoArmado.isSirenaActive();
+  if (externalLed8 || led8Latched || armadoLed8 || sirenaActiva) digitalWrite(RELAY_PIN, HIGH);
   else digitalWrite(RELAY_PIN, LOW);
 
   // Aquí irán las lógicas de ESTADO_ARMADO cuando se implementen

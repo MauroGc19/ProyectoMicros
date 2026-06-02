@@ -31,6 +31,8 @@ public:
   void resetearSistema(bool mantenerMemoria);
   // Indica si el LED_8 está activado por temporizador interno
   bool isLed8Active();
+  // Indica si la sirena está activa
+  bool isSirenaActive();
 
   // Compatibilidad simple con sketch
   void enter();
