@@ -9,11 +9,8 @@
 
 
 // ===================== Instancias Globales =====================
-
-// LCD 16x2 - Inicialización con pines RS, EN, D0-D7
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D0, LCD_D1, LCD_D2, LCD_D3, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
-// Teclado Matricial 4x4
 const byte FILAS = 4;
 const byte COLUMNAS = 4;
 char teclas[FILAS][COLUMNAS] = {
@@ -27,15 +24,13 @@ byte pinFilas[FILAS] = {KEYPAD_ROW_1, KEYPAD_ROW_2, KEYPAD_ROW_3, KEYPAD_ROW_4};
 byte pinColumnas[COLUMNAS] = {KEYPAD_COL_1, KEYPAD_COL_2, KEYPAD_COL_3, KEYPAD_COL_4};
 Keypad teclado = Keypad(makeKeymap(teclas), pinFilas, pinColumnas, FILAS, COLUMNAS);
 
-// Estados del sistema
 EstadoDesarmado estadoDesarmado;
 EstadoArmado estadoArmado;
 
 // ===================== Variables Globales =====================
-
-// Estados del sistema
 enum EstadoSistema {
   ESTADO_DESARMADO,
+  ESTADO_ARMADO
   ESTADO_ARMADO
 };
 
@@ -87,18 +82,14 @@ void cambiarEstado(void* nuevoEstado) {
 }
 
 // ===================== Setup =====================
-
 void setup() {
-  // Inicializar comunicación serial para debugging
   Serial.begin(9600);
   Serial.println("=== SISTEMA DE ALARMA INICIANDO ===");
   
-  // Inicializar LCD (16 columnas, 2 filas)
   lcd.begin(16, 2);
   lcd.clear();
   lcd.print("Sistema Iniciando");
   
-  // Configurar pines de entrada
   pinMode(POT_1, INPUT);
   pinMode(POT_2, INPUT);
   pinMode(SWITCH_1, INPUT);
@@ -112,7 +103,6 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(BUTTON_1), boton1ISR, FALLING);
   attachInterrupt(digitalPinToInterrupt(BUTTON_2), boton2ISR, FALLING);
   
-  // Configurar pines de salida
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW);
   
@@ -123,25 +113,20 @@ void setup() {
   pinMode(DATA_BIT_2, OUTPUT);
   pinMode(DATA_BIT_3, OUTPUT);
   
-  // Configurar LEDs
   for (int i = 0; i < 8; i++) {
-    int pinLED = 2 + i; // Pines 2-9
+    int pinLED = 2 + i; 
     pinMode(pinLED, OUTPUT);
     digitalWrite(pinLED, LOW);
   }
   
-  // Inicializar el estado desarmado
   estadoActual = ESTADO_DESARMADO;
-  estadoDesarmado.enter();
+  // estadoDesarmado.enter(); // Descomentar cuando la clase EstadoDesarmado esté lista
   
-  Serial.println("Sistema inicializado correctamente");
-  delay(1000);
+  Serial.println("Sistema inicializado");
 }
 
 // ===================== Loop Principal =====================
-
 void loop() {
-  // Leer tecla del teclado matricial
   char teclaPresionada = teclado.getKey();
   
   // Procesar la tecla en el estado actual

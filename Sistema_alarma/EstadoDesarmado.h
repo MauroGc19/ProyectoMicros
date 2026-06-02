@@ -50,6 +50,7 @@ public:
 private:
   // PIN de seguridad
   const String PIN_CORRECTO = "1245";
+  const String PIN_CORRECTO = "1245";
   String pinIngresado;
   unsigned long ultimaTeclaMillis;
   const unsigned long PIN_TIMEOUT_MS = 7000;
