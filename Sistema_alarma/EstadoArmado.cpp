@@ -127,6 +127,13 @@ void EstadoArmado::activarSirena() {
   if (digitalRead(SWITCH_5) == HIGH) {
     digitalWrite(RELAY_PIN, HIGH);
     sirenaActiva = true;
+
+    // Notificar al ESP32
+    if (digitalRead(SWITCH_7) == HIGH) {
+      Serial1.println("INTRUSION_PRUEBA");
+    } else {
+      Serial1.println("INTRUSION_REAL");
+    }
   } else {
     // Alarma silenciosa: no activar relay, pero marcar memoria
     sirenaActiva = false;
@@ -161,7 +168,8 @@ void EstadoArmado::leerTeclado() {
       // Submit PIN
       if (validarPIN()) {
         // Si la sirena está activa o hubo pre-alarma, apagar y desarmar
-        resetearSistema(false);
+        bool mantenerMemoria = alarmaMemoria || sirenaActiva; 
+        resetearSistema(mantenerMemoria);
         cambiarEstado((void*)1);
         return;
       } else {

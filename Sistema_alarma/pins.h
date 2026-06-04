@@ -33,7 +33,7 @@
 #define KEYPAD_COL_4    45  // Columna 4
 
 // ==================== Botones ====================
-#define BUTTON_1        19 // Botón 1
+#define BUTTON_1        21 // Botón 1
 #define BUTTON_2        20  // Botón 2
 
 // ==================== Entradas Analógicas ====================
@@ -46,6 +46,7 @@
 #define SWITCH_5        A6  // Switch 5
 #define SWITCH_6        A7  // Switch 6
 #define RELAY_PIN       A8  // Relay
+#define SWITCH_7        A9  // Switch 7
 
 // ==================== LEDs (Pines 2-9) ====================
 #define LED_1           46   // LED 1
